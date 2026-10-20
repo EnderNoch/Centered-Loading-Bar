@@ -2,6 +2,8 @@
 
 [Modrinth](https://modrinth.com/project/clb) · A small client-side Fabric mod for Minecraft 26.3. It hides the Mojang Studios logo on loading screens and moves the loading bar to the middle of the screen.
 
+![Vanilla loading screen next to Centered Loading Bar](screenshots/comparison.png)
+
 Works on its own and alongside [Reimagined Intro](https://modrinth.com/mod/reimagined-intro). Needs only Fabric Loader; Fabric API is not required.
 
 ## Building
