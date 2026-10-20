@@ -1,0 +1,54 @@
+plugins {
+	id 'net.fabricmc.fabric-loom' version "${loom_version}"
+	id 'com.modrinth.minotaur' version '2.10.0'
+}
+
+base {
+	archivesName = project.name
+}
+
+dependencies {
+	minecraft "com.mojang:minecraft:${project.minecraft_version}"
+	implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+}
+
+processResources {
+	def version = project.version
+	inputs.property "version", version
+
+	filesMatching("fabric.mod.json") {
+		expand "version": version
+	}
+}
+
+tasks.withType(JavaCompile).configureEach {
+	it.options.release = 25
+}
+
+java {
+	sourceCompatibility = JavaVersion.VERSION_25
+	targetCompatibility = JavaVersion.VERSION_25
+}
+
+jar {
+	from("LICENSE")
+}
+
+// Upload: MODRINTH_TOKEN=... ./gradlew modrinth  (token needs the CREATE_VERSION scope)
+// Add -PmodrinthDebug to print what would be sent without uploading anything.
+modrinth {
+	token = System.getenv("MODRINTH_TOKEN")
+	projectId = project.modrinth_project
+	versionNumber = project.version
+	versionName = "${project.version} for Minecraft ${project.minecraft_version}"
+	versionType = "release"
+	uploadFile = jar
+	gameVersions = [project.minecraft_version]
+	loaders = ["fabric"]
+	changelog = providers.environmentVariable("CHANGELOG").orElse("").get()
+	debugMode = providers.gradleProperty("modrinthDebug").isPresent()
+}
+
+tasks.named("modrinth") {
+	notCompatibleWithConfigurationCache("Minotaur reads the project while uploading")
+}

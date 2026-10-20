@@ -1,0 +1,11 @@
+{
+	"required": false,
+	"package": "pl.endernoch.centeredloadingbar.mixin",
+	"compatibilityLevel": "JAVA_25",
+	"client": [
+		"LoadingOverlayMixin"
+	],
+	"injectors": {
+		"defaultRequire": 0
+	}
+}
