@@ -18,11 +18,13 @@ The mod jar ends up in `build/libs/`.
 
 ## Publishing to Modrinth
 
+Bump `version` in `gradle.properties`, then:
+
 ```
-MODRINTH_TOKEN=... ./gradlew modrinth
+CHANGELOG="..." ./gradlew build modrinth
 ```
 
-The token needs the `CREATE_VERSION` scope. Add `-PmodrinthDebug` to see what would be uploaded without uploading it.
+The token is read from `MODRINTH_TOKEN`, or else from `~/.config/modrinth/token`; it needs the Create versions, Read versions and Write versions scopes. After the upload the version is marked client-only automatically. Add `-PmodrinthDebug` to see what would be uploaded without uploading it.
 
 ## License
 

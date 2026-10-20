@@ -34,10 +34,16 @@ jar {
 	from("LICENSE")
 }
 
-// Upload: MODRINTH_TOKEN=... ./gradlew modrinth  (token needs the CREATE_VERSION scope)
+// Upload: ./gradlew build modrinth  (set CHANGELOG=... for the version's changelog)
+// The token comes from MODRINTH_TOKEN, or else from ~/.config/modrinth/token.
 // Add -PmodrinthDebug to print what would be sent without uploading anything.
+def modrinthToken = providers.environmentVariable("MODRINTH_TOKEN").orElse(providers.provider {
+	def file = new File(System.getProperty("user.home"), ".config/modrinth/token")
+	file.exists() ? file.text.trim() : null
+})
+
 modrinth {
-	token = System.getenv("MODRINTH_TOKEN")
+	token = modrinthToken
 	projectId = project.modrinth_project
 	versionNumber = project.version
 	versionName = "${project.version} for Minecraft ${project.minecraft_version}"
@@ -51,4 +57,36 @@ modrinth {
 
 tasks.named("modrinth") {
 	notCompatibleWithConfigurationCache("Minotaur reads the project while uploading")
+	finalizedBy("modrinthClientOnly")
+}
+
+// Minotaur cannot set a version's environment, so mark the uploaded version client-only through the API.
+tasks.register("modrinthClientOnly") {
+	notCompatibleWithConfigurationCache("talks to the Modrinth API")
+	def debug = providers.gradleProperty("modrinthDebug").isPresent()
+	def versionUrl = "https://api.modrinth.com/v2/project/${project.modrinth_project}/version/${project.version}"
+	def versionNumber = project.version.toString()
+	onlyIf { !debug }
+	doLast {
+		def client = java.net.http.HttpClient.newHttpClient()
+		def token = modrinthToken.get()
+		def lookup = client.send(
+			java.net.http.HttpRequest.newBuilder(URI.create(versionUrl)).header("Authorization", token).build(),
+			java.net.http.HttpResponse.BodyHandlers.ofString())
+		if (lookup.statusCode() != 200) {
+			throw new GradleException("Could not find version ${versionNumber} on Modrinth (HTTP ${lookup.statusCode()})")
+		}
+		def id = new groovy.json.JsonSlurper().parseText(lookup.body()).id
+		def patch = client.send(
+			java.net.http.HttpRequest.newBuilder(URI.create("https://api.modrinth.com/v3/version/${id}"))
+				.header("Authorization", token)
+				.header("Content-Type", "application/json")
+				.method("PATCH", java.net.http.HttpRequest.BodyPublishers.ofString('{"environment":"client_only"}'))
+				.build(),
+			java.net.http.HttpResponse.BodyHandlers.ofString())
+		if (patch.statusCode() != 204) {
+			throw new GradleException("Could not mark version ${versionNumber} client-only (HTTP ${patch.statusCode()}): ${patch.body()}")
+		}
+		logger.lifecycle("Marked version ${versionNumber} (${id}) as client-only on Modrinth")
+	}
 }
